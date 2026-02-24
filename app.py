@@ -3,10 +3,17 @@ import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-# 1. Configuración de página (Debe ser lo primero)
 st.set_page_config(page_title="Alabanza IDR", layout="wide")
 
-# 2. Autenticación con BigQuery (Streamlit Cloud o Local)
+# Forzar Light Mode vía CSS inyectado
+st.markdown("""
+    <style>
+    [data-testid="stAppViewContainer"] { background-color: white; color: black; }
+    [data-testid="stHeader"] { background: rgba(255,255,255,0); }
+    [data-testid="stSidebar"] { background-color: #f0f2f6; }
+    </style>
+    """, unsafe_allow_html=True)
+
 @st.cache_resource
 def get_bigquery_client():
     if "gcp_service_account" in st.secrets:
@@ -14,7 +21,6 @@ def get_bigquery_client():
         credentials = service_account.Credentials.from_service_account_info(creds_info)
         return bigquery.Client(credentials=credentials, project=creds_info["project_id"])
     else:
-        # Fallback local (requiere gcloud auth application-default login)
         return bigquery.Client()
 
 try:
@@ -25,7 +31,6 @@ except Exception as e:
 
 TABLE_ID = "asistente-personal-unico.alabanza.canciones"
 
-# 3. Funciones de Datos
 def get_data():
     try:
         query = f"SELECT * FROM `{TABLE_ID}` ORDER BY Numero"
@@ -53,7 +58,6 @@ def authenticate(role_name, correct_password):
         return False
     return True
 
-# 4. Configuración de Interfaz
 column_config = {
     "Numero": st.column_config.NumberColumn("N°", format="%d"),
     "Cancion": st.column_config.TextColumn("Canción"),
@@ -69,7 +73,6 @@ column_config = {
 menu = st.sidebar.selectbox("Seleccionar Rol", ["Dirección", "Equipo", "Administrador"])
 df = get_data()
 
-# 5. Vistas
 if menu == "Dirección":
     st.title("🎤 Vista de Dirección")
     if not df.empty:
@@ -85,7 +88,7 @@ if menu == "Dirección":
             st.info("No hay canciones con estado 'OK'.")
 
 elif menu == "Equipo":
-    if authenticate("Equipo", "IDR2026"):
+    if authenticate("Equipo", "IDR19"):
         st.title("🎸 Listado del Equipo")
         search = st.text_input("Buscar por nombre o número")
         if not df.empty:
@@ -93,13 +96,14 @@ elif menu == "Equipo":
             st.dataframe(display_df, column_config=column_config, use_container_width=True, hide_index=True)
 
 elif menu == "Administrador":
-    if authenticate("Administrador", "IDR19"):
+    if authenticate("Administrador", "adminIDR"):
         st.title("⚙️ Panel de Control")
         
         tab_add, tab_manage = st.tabs(["➕ Agregar Canción", "🔧 Gestionar Base de Datos"])
         
         with tab_add:
-            with st.form("new_song"):
+            # clear_on_submit limpia los campos después de hacer click en el botón
+            with st.form("new_song", clear_on_submit=True):
                 col1, col2 = st.columns(2)
                 with col1:
                     nombre = st.text_input("Nombre de la Canción")
@@ -128,7 +132,7 @@ elif menu == "Administrador":
                         try:
                             job = client.load_table_from_dataframe(df_to_load, TABLE_ID, job_config=job_config)
                             job.result()
-                            st.success(f"Canción #{next_id} guardada correctamente")
+                            st.toast(f"✅ Canción #{next_id} guardada con éxito!", icon='🎉')
                             st.rerun()
                         except Exception as e:
                             st.error(f"Error al insertar: {e}")
@@ -147,7 +151,7 @@ elif menu == "Administrador":
                     try:
                         del_query = f"DELETE FROM `{TABLE_ID}` WHERE Numero = {id_del}"
                         client.query(del_query).result()
-                        st.warning(f"Registro #{id_del} eliminado.")
+                        st.toast(f"🗑️ Registro #{id_del} eliminado.", icon='⚠️')
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error al eliminar: {e}")
