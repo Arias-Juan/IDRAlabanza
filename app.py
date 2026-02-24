@@ -1,23 +1,31 @@
 import streamlit as st
 import pandas as pd
 from google.cloud import bigquery
-from google.oauth2 import service_account # Agrega este import
+from google.oauth2 import service_account
 
-# Reemplaza la línea client = bigquery.Client() por esto:
-if "gcp_service_account" in st.secrets:
-    # Usar credenciales de Streamlit Cloud Secrets
-    creds_info = st.secrets["gcp_service_account"]
-    credentials = service_account.Credentials.from_service_account_info(creds_info)
-    client = bigquery.Client(credentials=credentials, project=creds_info["project_id"])
-else:
-    # Fallback para desarrollo local (ADC)
-    client = bigquery.Client()
-
+# 1. Configuración de página (Debe ser lo primero)
 st.set_page_config(page_title="Alabanza IDR", layout="wide")
 
-client = bigquery.Client()
+# 2. Autenticación con BigQuery (Streamlit Cloud o Local)
+@st.cache_resource
+def get_bigquery_client():
+    if "gcp_service_account" in st.secrets:
+        creds_info = st.secrets["gcp_service_account"]
+        credentials = service_account.Credentials.from_service_account_info(creds_info)
+        return bigquery.Client(credentials=credentials, project=creds_info["project_id"])
+    else:
+        # Fallback local (requiere gcloud auth application-default login)
+        return bigquery.Client()
+
+try:
+    client = get_bigquery_client()
+except Exception as e:
+    st.error(f"Error de conexión con GCP: {e}")
+    st.stop()
+
 TABLE_ID = "asistente-personal-unico.alabanza.canciones"
 
+# 3. Funciones de Datos
 def get_data():
     try:
         query = f"SELECT * FROM `{TABLE_ID}` ORDER BY Numero"
@@ -45,6 +53,7 @@ def authenticate(role_name, correct_password):
         return False
     return True
 
+# 4. Configuración de Interfaz
 column_config = {
     "Numero": st.column_config.NumberColumn("N°", format="%d"),
     "Cancion": st.column_config.TextColumn("Canción"),
@@ -60,6 +69,7 @@ column_config = {
 menu = st.sidebar.selectbox("Seleccionar Rol", ["Dirección", "Equipo", "Administrador"])
 df = get_data()
 
+# 5. Vistas
 if menu == "Dirección":
     st.title("🎤 Vista de Dirección")
     if not df.empty:
@@ -75,7 +85,7 @@ if menu == "Dirección":
             st.info("No hay canciones con estado 'OK'.")
 
 elif menu == "Equipo":
-    if authenticate("Equipo", "Alabanza"):
+    if authenticate("Equipo", "IDR2026"):
         st.title("🎸 Listado del Equipo")
         search = st.text_input("Buscar por nombre o número")
         if not df.empty:
@@ -83,7 +93,7 @@ elif menu == "Equipo":
             st.dataframe(display_df, column_config=column_config, use_container_width=True, hide_index=True)
 
 elif menu == "Administrador":
-    if authenticate("Administrador", "IDR2026"):
+    if authenticate("Administrador", "IDR19"):
         st.title("⚙️ Panel de Control")
         
         tab_add, tab_manage = st.tabs(["➕ Agregar Canción", "🔧 Gestionar Base de Datos"])
@@ -112,19 +122,12 @@ elif menu == "Administrador":
                             "Tono": tono, "Estado": estado, "Tipo": tipo, "Audio": audio
                         }
                         
-                        # Creamos un DF de una sola fila para el load job
                         df_to_load = pd.DataFrame([new_row])
-                        
-                        # Configuración del Job para que haga Append
-                        job_config = bigquery.LoadJobConfig(
-                            write_disposition="WRITE_APPEND",
-                        )
+                        job_config = bigquery.LoadJobConfig(write_disposition="WRITE_APPEND")
                         
                         try:
-                            job = client.load_table_from_dataframe(
-                                df_to_load, TABLE_ID, job_config=job_config
-                            )
-                            job.result()  # Espera a que termine el job
+                            job = client.load_table_from_dataframe(df_to_load, TABLE_ID, job_config=job_config)
+                            job.result()
                             st.success(f"Canción #{next_id} guardada correctamente")
                             st.rerun()
                         except Exception as e:
@@ -141,7 +144,10 @@ elif menu == "Administrador":
                 st.subheader("Eliminar Registro")
                 id_del = st.number_input("Ingrese el Número (N°) de canción a eliminar", min_value=1, step=1)
                 if st.button("Eliminar Permanentemente", type="primary"):
-                    del_query = f"DELETE FROM `{TABLE_ID}` WHERE Numero = {id_del}"
-                    client.query(del_query).result()
-                    st.warning(f"Registro #{id_del} eliminado.")
-                    st.rerun()
+                    try:
+                        del_query = f"DELETE FROM `{TABLE_ID}` WHERE Numero = {id_del}"
+                        client.query(del_query).result()
+                        st.warning(f"Registro #{id_del} eliminado.")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al eliminar: {e}")
