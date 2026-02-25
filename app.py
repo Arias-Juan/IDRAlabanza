@@ -155,3 +155,34 @@ elif menu == "Administrador":
                         st.rerun()
                     except Exception as e:
                         st.error(f"Error al eliminar: {e}")
+
+                st.divider()
+                st.subheader("Modificar Estado")
+                
+                col_update1, col_update2 = st.columns([2, 1])
+                
+                with col_update1:
+                    song_options = df.apply(lambda x: f"{x['Numero']} - {x['Cancion']}", axis=1).tolist()
+                    selected_song = st.selectbox("Seleccione la canción a actualizar", options=song_options)
+                    id_update = int(selected_song.split(" - ")[0])
+                
+                with col_update2:
+                    current_status = df[df['Numero'] == id_update]['Estado'].values[0]
+                    new_status = st.selectbox(
+                        "Nuevo Estado", 
+                        options=["OK", "APRENDIENDO"], 
+                        index=0 if current_status == "OK" else 1
+                    )
+
+                if st.button("Actualizar Estado", use_container_width=True):
+                    try:
+                        update_query = f"""
+                            UPDATE `{TABLE_ID}`
+                            SET Estado = '{new_status}'
+                            WHERE Numero = {id_update}
+                        """
+                        client.query(update_query).result()
+                        st.toast(f"✅ Canción #{id_update} actualizada a {new_status}", icon='🔄')
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error al actualizar: {e}")
