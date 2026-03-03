@@ -88,12 +88,24 @@ if menu == "Dirección":
             st.info("No hay canciones con estado 'OK'.")
 
 elif menu == "Equipo":
-    if authenticate("Equipo", "IDR19"):
-        st.title("🎸 Listado del Equipo")
-        search = st.text_input("Buscar por nombre o número")
-        if not df.empty:
-            display_df = df[df['Cancion'].str.contains(search, case=False) | df['Numero'].astype(str).str.contains(search)] if search else df
-            st.dataframe(display_df, column_config=column_config, use_container_width=True, hide_index=True)
+    st.title("🎸 Listado del Equipo")
+    search = st.text_input("Buscar por nombre o número")
+    
+    if not df.empty:
+        if search:
+            display_df = df[
+                df['Cancion'].str.contains(search, case=False, na=False) | 
+                df['Numero'].astype(str).str.contains(search, na=False)
+            ]
+        else:
+            display_df = df
+
+        st.dataframe(
+            display_df,
+            column_config=column_config,
+            use_container_width=True,
+            hide_index=True
+        )
 
 elif menu == "Administrador":
     if authenticate("Administrador", "adminIDR"):
