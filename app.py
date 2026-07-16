@@ -41,10 +41,13 @@ st.markdown("""
         border-bottom: 1px solid #eaecf0;
     }
 
-    .tabla-canciones td.texto { padding: 12px 8px; }
+    .tabla-canciones td.texto {
+        padding: 6px 8px;
+        white-space: nowrap;
+    }
 
     .tabla-canciones td.vacio {
-        padding: 12px 8px;
+        padding: 6px 8px;
         color: #9aa0a6;
         text-align: center;
     }
@@ -55,17 +58,20 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         box-sizing: border-box;
-        height: calc(100% - 8px);
-        min-height: 48px;
-        margin: 4px;
-        padding: 8px;
+        height: calc(100% - 6px);
+        min-height: 38px;
+        min-width: 40px;
+        margin: 3px;
+        padding: 4px 8px;
         border-radius: 8px;
         background-color: #e8f0fe;
         color: #1a4fcc;
-        font-weight: 600;
+        font-size: 1.15rem;
         text-decoration: none;
         white-space: nowrap;
     }
+
+    .tabla-canciones th.col-link { text-align: center; }
 
     .tabla-canciones a.celda-link:active { background-color: #c9dcff; }
     </style>
@@ -217,12 +223,14 @@ column_config = {
     )
 }
 
+# emoji -> se muestra en el encabezado y en el chip; el texto va como
+# tooltip para no ensanchar la columna en pantallas angostas.
 LINK_COLUMNS = {
-    "Notas_Piano": ("🎹 Piano", "Link 🎹"),
-    "Notas_Guitarra": ("🎸 Guitarra", "Link 🎸"),
-    "Letra": ("📄 Letra", "Link 📄"),
-    "Video_Bateria": ("🥁 Batería", "Link 🥁"),
-    "Audio": ("🎧 Audio", "Link 🎧")
+    "Notas_Piano": ("🎹", "Notas de piano"),
+    "Notas_Guitarra": ("🎸", "Notas de guitarra"),
+    "Letra": ("📄", "Letra"),
+    "Video_Bateria": ("🥁", "Video de batería"),
+    "Audio": ("🎧", "Audio")
 }
 
 TEXT_HEADERS = {
@@ -237,13 +245,18 @@ def render_song_table(data, columns):
     ]
 
     for col in columns:
-        header = (
-            LINK_COLUMNS[col][0]
-            if col in LINK_COLUMNS
-            else TEXT_HEADERS.get(col, col)
-        )
+        if col in LINK_COLUMNS:
+            emoji, titulo = LINK_COLUMNS[col]
 
-        parts.append(f"<th>{escape(header)}</th>")
+            parts.append(
+                f'<th class="col-link" title="{escape(titulo, quote=True)}">'
+                f"{emoji}</th>"
+            )
+
+        else:
+            parts.append(
+                f"<th>{escape(TEXT_HEADERS.get(col, col))}</th>"
+            )
 
     parts.append("</tr></thead><tbody>")
 
@@ -254,6 +267,8 @@ def render_song_table(data, columns):
             value = row.get(col)
 
             if col in LINK_COLUMNS:
+                emoji, titulo = LINK_COLUMNS[col]
+
                 url = (
                     ""
                     if pd.isna(value)
@@ -263,8 +278,9 @@ def render_song_table(data, columns):
                 if url.startswith(("http://", "https://")):
                     parts.append(
                         f'<td><a class="celda-link" target="_blank" '
-                        f'rel="noopener" href="{escape(url, quote=True)}">'
-                        f'{escape(LINK_COLUMNS[col][1])}</a></td>'
+                        f'rel="noopener" title="{escape(titulo, quote=True)}" '
+                        f'href="{escape(url, quote=True)}">'
+                        f"{emoji}</a></td>"
                     )
 
                 else:
