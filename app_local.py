@@ -14,6 +14,22 @@ st.markdown("""
     [data-testid="stAppViewContainer"] { background-color: white; color: black; }
     [data-testid="stHeader"] { background: rgba(255,255,255,0); }
     [data-testid="stSidebar"] { background-color: #f0f2f6; }
+
+    [data-testid="stDataFrame"] a {
+        display: inline-block;
+        padding: 8px 12px;
+        min-height: 34px;
+        line-height: 18px;
+        border-radius: 8px;
+        background-color: #e8f0fe;
+        color: #1a4fcc !important;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    [data-testid="stDataFrame"] a:active {
+        background-color: #c9dcff;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -97,7 +113,7 @@ def get_setlist():
 
         df["Fecha_Creacion"] = pd.to_datetime(df["Fecha_Creacion"])
 
-        limite = datetime.now() - timedelta(hours=72)
+        limite = datetime.now() - timedelta(days=7)
 
         df = df[df["Fecha_Creacion"] >= limite]
 
@@ -201,7 +217,8 @@ if menu == "Dirección":
                 ]],
                 column_config=column_config,
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
+                row_height=50
             )
 
         else:
@@ -226,12 +243,13 @@ elif menu == "Equipo":
             listado_df,
             column_config=column_config,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            row_height=50
         )
 
         expiracion = (
             setlist["Fecha_Creacion"].max() +
-            timedelta(hours=72)
+            timedelta(days=7)
         )
 
         st.caption(
@@ -265,7 +283,8 @@ elif menu == "Equipo":
             display_df,
             column_config=column_config,
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            row_height=50
         )
 
 elif menu == "Administrador":
@@ -379,7 +398,8 @@ elif menu == "Administrador":
                     df,
                     column_config=column_config,
                     use_container_width=True,
-                    hide_index=True
+                    hide_index=True,
+                    row_height=50
                 )
 
                 st.divider()
@@ -488,39 +508,92 @@ elif menu == "Administrador":
                 axis=1
             ).tolist()
 
-            selected_songs = st.multiselect(
-                "Seleccionar canciones en orden",
-                songs
-            )
+            if "setlist_builder" not in st.session_state:
+                st.session_state["setlist_builder"] = []
+
+            col_pick, col_add = st.columns([4, 1])
+
+            with col_pick:
+                song_to_add = st.selectbox(
+                    "Canción a agregar",
+                    options=songs
+                )
+
+            with col_add:
+                st.write("")
+
+                if st.button(
+                    "➕ Agregar",
+                    use_container_width=True
+                ):
+                    st.session_state["setlist_builder"].append(
+                        song_to_add
+                    )
+
+                    st.rerun()
+
+            selected_songs = st.session_state["setlist_builder"]
 
             if selected_songs:
                 st.info(
-                    "El orden de selección será el orden del listado."
+                    "El orden de esta lista será el orden del listado. "
+                    "Una misma canción puede repetirse."
                 )
 
-                preview_rows = []
+                for idx, song in enumerate(selected_songs):
+                    (
+                        col_song,
+                        col_up,
+                        col_down,
+                        col_del
+                    ) = st.columns([6, 1, 1, 1])
 
-                for idx, song in enumerate(
-                    selected_songs,
-                    start=1
-                ):
-                    preview_rows.append({
-                        "Orden": idx,
-                        "Canción": song
-                    })
+                    col_song.markdown(
+                        f"**{idx + 1}.** {song}"
+                    )
 
-                st.dataframe(
-                    pd.DataFrame(preview_rows),
-                    use_container_width=True,
-                    hide_index=True
-                )
+                    if col_up.button(
+                        "⬆️",
+                        key=f"up_{idx}",
+                        disabled=idx == 0,
+                        use_container_width=True
+                    ):
+                        selected_songs[idx - 1], selected_songs[idx] = (
+                            selected_songs[idx],
+                            selected_songs[idx - 1]
+                        )
+
+                        st.rerun()
+
+                    if col_down.button(
+                        "⬇️",
+                        key=f"down_{idx}",
+                        disabled=idx == len(selected_songs) - 1,
+                        use_container_width=True
+                    ):
+                        selected_songs[idx + 1], selected_songs[idx] = (
+                            selected_songs[idx],
+                            selected_songs[idx + 1]
+                        )
+
+                        st.rerun()
+
+                    if col_del.button(
+                        "🗑️",
+                        key=f"del_{idx}",
+                        use_container_width=True
+                    ):
+                        selected_songs.pop(idx)
+
+                        st.rerun()
 
             col_save, col_clear = st.columns(2)
 
             with col_save:
                 if st.button(
                     "💾 Publicar Listado",
-                    use_container_width=True
+                    use_container_width=True,
+                    disabled=not selected_songs
                 ):
                     rows = []
 
@@ -542,8 +615,10 @@ elif menu == "Administrador":
 
                     save_setlist(setlist_df)
 
+                    st.session_state["setlist_builder"] = []
+
                     st.toast(
-                        "✅ Listado publicado por 72 horas",
+                        "✅ Listado publicado por 7 días",
                         icon="🎵"
                     )
 
@@ -561,6 +636,8 @@ elif menu == "Administrador":
                     ])
 
                     save_setlist(empty_df)
+
+                    st.session_state["setlist_builder"] = []
 
                     st.toast(
                         "🗑️ Listado eliminado",
@@ -603,7 +680,7 @@ elif menu == "Administrador":
 
                 expiracion = (
                     setlist["Fecha_Creacion"].max() +
-                    timedelta(hours=72)
+                    timedelta(days=7)
                 )
 
                 st.caption(
