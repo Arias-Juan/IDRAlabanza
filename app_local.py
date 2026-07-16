@@ -3,6 +3,7 @@ import pandas as pd
 import os
 
 from datetime import datetime, timedelta
+from html import escape
 
 st.set_page_config(page_title="Alabanza IDR - Local", layout="wide")
 
@@ -15,21 +16,57 @@ st.markdown("""
     [data-testid="stHeader"] { background: rgba(255,255,255,0); }
     [data-testid="stSidebar"] { background-color: #f0f2f6; }
 
-    [data-testid="stDataFrame"] a {
-        display: inline-block;
-        padding: 8px 12px;
-        min-height: 34px;
-        line-height: 18px;
-        border-radius: 8px;
-        background-color: #e8f0fe;
-        color: #1a4fcc !important;
-        font-weight: 600;
-        text-decoration: none;
+    .tabla-wrap { overflow-x: auto; }
+
+    .tabla-canciones {
+        width: 100%;
+        border-collapse: collapse;
     }
 
-    [data-testid="stDataFrame"] a:active {
-        background-color: #c9dcff;
+    .tabla-canciones th {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 2px solid #d0d5dd;
+        font-size: 0.85rem;
+        white-space: nowrap;
     }
+
+    /* height:1px hace que el 100% del <a> resuelva contra el alto real
+       de la fila, para que el link llene la celda aunque el nombre de
+       la canción ocupe dos renglones. */
+    .tabla-canciones td {
+        padding: 0;
+        height: 1px;
+        border-bottom: 1px solid #eaecf0;
+    }
+
+    .tabla-canciones td.texto { padding: 12px 8px; }
+
+    .tabla-canciones td.vacio {
+        padding: 12px 8px;
+        color: #9aa0a6;
+        text-align: center;
+    }
+
+    /* El <a> ocupa toda la celda: se puede tocar en cualquier punto. */
+    .tabla-canciones a.celda-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: calc(100% - 8px);
+        min-height: 48px;
+        margin: 4px;
+        padding: 8px;
+        border-radius: 8px;
+        background-color: #e8f0fe;
+        color: #1a4fcc;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+    }
+
+    .tabla-canciones a.celda-link:active { background-color: #c9dcff; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -192,6 +229,79 @@ column_config = {
     )
 }
 
+LINK_COLUMNS = {
+    "Notas_Piano": ("🎹 Piano", "Link 🎹"),
+    "Notas_Guitarra": ("🎸 Guitarra", "Link 🎸"),
+    "Letra": ("📄 Letra", "Link 📄"),
+    "Video_Bateria": ("🥁 Batería", "Link 🥁"),
+    "Audio": ("🎧 Audio", "Link 🎧")
+}
+
+TEXT_HEADERS = {
+    "Numero": "N°",
+    "Cancion": "Canción"
+}
+
+def render_song_table(data, columns):
+    parts = [
+        '<div class="tabla-wrap">',
+        '<table class="tabla-canciones"><thead><tr>'
+    ]
+
+    for col in columns:
+        header = (
+            LINK_COLUMNS[col][0]
+            if col in LINK_COLUMNS
+            else TEXT_HEADERS.get(col, col)
+        )
+
+        parts.append(f"<th>{escape(header)}</th>")
+
+    parts.append("</tr></thead><tbody>")
+
+    for _, row in data.iterrows():
+        parts.append("<tr>")
+
+        for col in columns:
+            value = row.get(col)
+
+            if col in LINK_COLUMNS:
+                url = (
+                    ""
+                    if pd.isna(value)
+                    else str(value).strip()
+                )
+
+                if url.startswith(("http://", "https://")):
+                    parts.append(
+                        f'<td><a class="celda-link" target="_blank" '
+                        f'rel="noopener" href="{escape(url, quote=True)}">'
+                        f'{escape(LINK_COLUMNS[col][1])}</a></td>'
+                    )
+
+                else:
+                    parts.append('<td class="vacio">—</td>')
+
+            else:
+                if pd.isna(value):
+                    text = ""
+
+                elif col == "Numero":
+                    text = str(int(value))
+
+                else:
+                    text = str(value)
+
+                parts.append(
+                    f'<td class="texto">{escape(text)}</td>'
+                )
+
+        parts.append("</tr>")
+
+    parts.append("</tbody></table></div>")
+
+    st.markdown("".join(parts), unsafe_allow_html=True)
+
 menu = st.sidebar.selectbox(
     "Seleccionar Rol",
     ["Dirección", "Equipo", "Administrador"]
@@ -207,18 +317,15 @@ if menu == "Dirección":
         df_dir = df[df["Estado"] == "OK"]
 
         if not df_dir.empty:
-            st.dataframe(
-                df_dir[[
+            render_song_table(
+                df_dir,
+                [
                     "Numero",
                     "Cancion",
                     "Letra",
                     "Audio",
                     "Tipo"
-                ]],
-                column_config=column_config,
-                use_container_width=True,
-                hide_index=True,
-                row_height=50
+                ]
             )
 
         else:
@@ -239,12 +346,19 @@ elif menu == "Equipo":
 
         st.subheader("🎵 Listado Actual")
 
-        st.dataframe(
+        render_song_table(
             listado_df,
-            column_config=column_config,
-            use_container_width=True,
-            hide_index=True,
-            row_height=50
+            [
+                "Numero",
+                "Cancion",
+                "Tono",
+                "Letra",
+                "Notas_Piano",
+                "Notas_Guitarra",
+                "Video_Bateria",
+                "Audio",
+                "Tipo"
+            ]
         )
 
         expiracion = (
@@ -279,12 +393,20 @@ elif menu == "Equipo":
 
         st.subheader("📚 Todas las Canciones")
 
-        st.dataframe(
+        render_song_table(
             display_df,
-            column_config=column_config,
-            use_container_width=True,
-            hide_index=True,
-            row_height=50
+            [
+                "Numero",
+                "Cancion",
+                "Tono",
+                "Letra",
+                "Notas_Piano",
+                "Notas_Guitarra",
+                "Video_Bateria",
+                "Audio",
+                "Estado",
+                "Tipo"
+            ]
         )
 
 elif menu == "Administrador":
@@ -398,8 +520,7 @@ elif menu == "Administrador":
                     df,
                     column_config=column_config,
                     use_container_width=True,
-                    hide_index=True,
-                    row_height=50
+                    hide_index=True
                 )
 
                 st.divider()
