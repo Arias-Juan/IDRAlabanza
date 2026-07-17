@@ -648,26 +648,38 @@ elif menu == "Administrador":
             if "setlist_builder" not in st.session_state:
                 st.session_state["setlist_builder"] = []
 
+            # El reset del selectbox va en un callback: Streamlit no deja
+            # cambiar el valor de un widget ya instanciado en la misma
+            # ejecución.
+            def agregar_cancion():
+                seleccion = st.session_state.get("song_pick")
+
+                if seleccion:
+                    st.session_state["setlist_builder"].append(
+                        seleccion
+                    )
+
+                    st.session_state["song_pick"] = None
+
             col_pick, col_add = st.columns([4, 1])
 
             with col_pick:
-                song_to_add = st.selectbox(
+                st.selectbox(
                     "Canción a agregar",
-                    options=songs
+                    options=songs,
+                    index=None,
+                    placeholder="Escribí para buscar…",
+                    key="song_pick"
                 )
 
             with col_add:
                 st.write("")
 
-                if st.button(
+                st.button(
                     "➕ Agregar",
-                    use_container_width=True
-                ):
-                    st.session_state["setlist_builder"].append(
-                        song_to_add
-                    )
-
-                    st.rerun()
+                    use_container_width=True,
+                    on_click=agregar_cancion
+                )
 
             selected_songs = st.session_state["setlist_builder"]
 
