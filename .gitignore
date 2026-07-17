@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+
+# Credenciales de GCP para correr app.py localmente: nunca se suben.
+.streamlit/secrets.toml

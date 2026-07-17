@@ -250,6 +250,48 @@ TEXT_HEADERS = {
     "Cancion": "Canción"
 }
 
+def listado_desde_setlist(df, setlist):
+    """Arma el listado en orden, salteando canciones borradas de la base.
+
+    Devuelve (listado_df, faltantes). Los números repetidos se conservan.
+    """
+    numeros = setlist["Numero"].tolist()
+    disponibles = set(df["Numero"])
+
+    presentes = [n for n in numeros if n in disponibles]
+    faltantes = [n for n in numeros if n not in disponibles]
+
+    listado_df = (
+        df[df["Numero"].isin(presentes)]
+        .set_index("Numero")
+        .loc[presentes]
+        .reset_index()
+    )
+
+    return listado_df, faltantes
+
+def avisar_faltantes(faltantes):
+    if faltantes:
+        numeros = ", ".join(f"N° {n}" for n in dict.fromkeys(faltantes))
+
+        st.warning(
+            f"{numeros}: ya no está(n) en la base y no se muestra(n)."
+        )
+
+def texto_para_compartir(listado_df):
+    lineas = ["🎵 Listado", ""]
+
+    for idx, row in enumerate(listado_df.itertuples(), start=1):
+        tono = (
+            ""
+            if pd.isna(row.Tono) or not str(row.Tono).strip()
+            else f" ({str(row.Tono).strip()})"
+        )
+
+        lineas.append(f"{idx}. {row.Cancion}{tono}")
+
+    return "\n".join(lineas)
+
 def render_song_table(data, columns):
     parts = [
         '<div class="tabla-wrap">',
@@ -351,16 +393,11 @@ elif menu == "Equipo":
     st.title("🎸 Listado del Equipo")
 
     if not setlist.empty:
-        numeros = setlist["Numero"].tolist()
-
-        listado_df = (
-            df[df["Numero"].isin(numeros)]
-            .set_index("Numero")
-            .loc[numeros]
-            .reset_index()
-        )
+        listado_df, faltantes = listado_desde_setlist(df, setlist)
 
         st.subheader("🎵 Listado Actual")
+
+        avisar_faltantes(faltantes)
 
         render_song_table(
             listado_df,
@@ -800,14 +837,12 @@ elif menu == "Administrador":
 
                 st.subheader("📋 Listado Actual")
 
-                numeros = setlist["Numero"].tolist()
-
-                current_df = (
-                    df[df["Numero"].isin(numeros)]
-                    .set_index("Numero")
-                    .loc[numeros]
-                    .reset_index()
+                current_df, faltantes = listado_desde_setlist(
+                    df,
+                    setlist
                 )
+
+                avisar_faltantes(faltantes)
 
                 current_df.insert(
                     0,
@@ -834,4 +869,13 @@ elif menu == "Administrador":
 
                 st.caption(
                     f"⏳ Expira el: {expiracion.strftime('%d/%m/%Y %H:%M')}"
+                )
+
+                st.divider()
+
+                st.subheader("💬 Para compartir")
+
+                st.code(
+                    texto_para_compartir(current_df),
+                    language=None
                 )
