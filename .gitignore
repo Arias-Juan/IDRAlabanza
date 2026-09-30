@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+.venv/
+venv/
 
-# Credenciales de GCP para correr app.py localmente: nunca se suben.
-.streamlit/secrets.toml
+# Config local: puede contener API keys. Nunca se sube.
+.env

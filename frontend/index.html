@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Alabanza IDR</title>
+    <!-- ?v= : subir el número al cambiar styles.css o app.js. Obliga al
+         navegador a bajar la versión nueva aunque tenga una cacheada. -->
+    <link rel="stylesheet" href="styles.css?v=3">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+</head>
+<body>
+    <button id="menu-toggle" class="menu-toggle" aria-label="Menú">☰</button>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <label class="campo">
+                <span>Seleccionar Pestaña</span>
+
+                <select id="rol">
+                    <option value="direccion">Dirección</option>
+                    <option value="equipo">Equipo</option>
+                    <option value="compartir">Compartir</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </label>
+
+            <div id="sidebar-admin" class="oculto">
+                <hr>
+
+                <h3>Acceso Administrador</h3>
+
+                <label class="campo">
+                    <span>Contraseña</span>
+                    <input type="password" id="api-key" autocomplete="off">
+                </label>
+
+                <button class="btn primario ancho" id="btn-login">
+                    Entrar como Administrador
+                </button>
+
+                <button class="btn ancho oculto" id="btn-logout">
+                    Cerrar sesión
+                </button>
+
+                <p class="error oculto" id="login-error"></p>
+            </div>
+        </aside>
+
+        <main class="contenido">
+            <!-- Vista Dirección -->
+            <section id="vista-direccion" class="vista">
+                <h1>🎤 Vista de Dirección</h1>
+                <div id="tabla-direccion"></div>
+            </section>
+
+            <!-- Vista Equipo -->
+            <section id="vista-equipo" class="vista oculto">
+                <h1>🎸 Listado del Equipo</h1>
+
+                <div id="bloque-listado" class="oculto">
+                    <h2>🎵 Listado Actual</h2>
+                    <div id="aviso-faltantes"></div>
+                    <div id="tabla-listado"></div>
+                    <p class="caption" id="publicado"></p>
+                    <hr>
+                </div>
+
+                <label class="campo">
+                    <span>Buscar por nombre o número</span>
+                    <input type="search" id="buscador" autocomplete="off">
+                </label>
+
+                <h2>📚 Todas las Canciones</h2>
+                <div id="tabla-equipo"></div>
+            </section>
+
+            <!-- Vista Compartir -->
+            <section id="vista-compartir" class="vista oculto">
+                <h1>💬 Compartir</h1>
+
+                <h2>🎵 Listado Actual</h2>
+
+                <p class="info oculto" id="sin-listado">
+                    No hay ningún listado publicado.
+                </p>
+
+                <div id="espera-listado"></div>
+
+                <div id="bloque-compartir-listado" class="oculto">
+                    <pre id="texto-compartir" class="codigo"></pre>
+
+                    <button class="btn" id="btn-copiar">📋 Copiar</button>
+                </div>
+
+                <hr>
+
+                <h2>📚 Todas las Canciones</h2>
+
+                <p class="caption">
+                    Número y nombre de las canciones con estado OK.
+                </p>
+
+                <div id="espera-catalogo"></div>
+
+                <div id="bloque-catalogo" class="oculto">
+                    <pre id="texto-catalogo" class="codigo"></pre>
+
+                    <button class="btn" id="btn-copiar-catalogo">
+                        📋 Copiar
+                    </button>
+                </div>
+            </section>
+
+            <!-- Vista Administrador -->
+            <section id="vista-admin" class="vista oculto">
+                <div id="admin-bloqueado">
+                    <h1>⚙️ Panel de Control</h1>
+                    <p class="info">
+                        Ingresá la contraseña en el panel lateral para
+                        administrar el repertorio.
+                    </p>
+                </div>
+
+                <div id="admin-panel" class="oculto">
+                    <h1>⚙️ Panel de Control</h1>
+
+                    <nav class="tabs">
+                        <button class="tab activo" data-tab="add">
+                            ➕ Agregar Canción
+                        </button>
+
+                        <button class="tab" data-tab="manage">
+                            🔧 Gestionar Base de Datos
+                        </button>
+
+                        <button class="tab" data-tab="setlist">
+                            🎵 Listado
+                        </button>
+                    </nav>
+
+                    <!-- Tab: agregar -->
+                    <div class="panel" id="tab-add">
+                        <form id="form-cancion" class="form-grid">
+                            <label class="campo">
+                                <span>Nombre de la Canción</span>
+                                <input id="f-cancion" required>
+                            </label>
+
+                            <label class="campo">
+                                <span>Video Bateria (URL)</span>
+                                <input id="f-bateria" type="url">
+                            </label>
+
+                            <label class="campo">
+                                <span>Notas Piano (URL)</span>
+                                <input id="f-piano" type="url">
+                            </label>
+
+                            <label class="campo">
+                                <span>Tono</span>
+                                <input id="f-tono">
+                            </label>
+
+                            <label class="campo">
+                                <span>Notas Guitarra (URL)</span>
+                                <input id="f-guitarra" type="url">
+                            </label>
+
+                            <label class="campo">
+                                <span>Estado</span>
+
+                                <select id="f-estado">
+                                    <option>OK</option>
+                                    <option>APRENDIENDO</option>
+                                </select>
+                            </label>
+
+                            <label class="campo">
+                                <span>Letra (URL)</span>
+                                <input id="f-letra" type="url">
+                            </label>
+
+                            <label class="campo">
+                                <span>Tipo</span>
+
+                                <select id="f-tipo">
+                                    <option>Lenta</option>
+                                    <option>Movida</option>
+                                </select>
+                            </label>
+
+                            <label class="campo">
+                                <span>Audio (URL)</span>
+                                <input id="f-audio" type="url">
+                            </label>
+
+                            <div class="acciones-form">
+                                <button class="btn primario" type="submit">
+                                    Guardar en BigQuery
+                                </button>
+                            </div>
+                        </form>
+
+                        <hr>
+
+                        <p class="caption">
+                            Los archivos de notas, letras y videos viven acá.
+                        </p>
+
+                        <a class="btn enlace"
+                           href="https://drive.google.com/drive/folders/1z1bKrLytkDBjCDXgw49w6T70mxhUiZT_?hl=es"
+                           target="_blank" rel="noopener">
+                            📁 Abrir carpeta de Drive
+                        </a>
+                    </div>
+
+                    <!-- Tab: gestionar -->
+                    <div class="panel oculto" id="tab-manage">
+                        <h2>Registros Actuales</h2>
+                        <div id="tabla-admin"></div>
+
+                        <hr>
+
+                        <h2>Eliminar Registro</h2>
+
+                        <label class="campo">
+                            <span>Ingrese el Número (N°) de canción a eliminar</span>
+                            <input type="number" id="del-numero" min="1" step="1" value="1">
+                        </label>
+
+                        <button class="btn primario" id="btn-eliminar">
+                            Eliminar Permanentemente
+                        </button>
+
+                        <hr>
+
+                        <h2>Modificar Estado</h2>
+
+                        <div class="fila-estado">
+                            <label class="campo">
+                                <span>Seleccione la canción a actualizar</span>
+                                <select id="upd-cancion"></select>
+                            </label>
+
+                            <label class="campo">
+                                <span>Nuevo Estado</span>
+
+                                <select id="upd-estado">
+                                    <option>OK</option>
+                                    <option>APRENDIENDO</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <button class="btn ancho" id="btn-actualizar">
+                            Actualizar Estado
+                        </button>
+                    </div>
+
+                    <!-- Tab: listado -->
+                    <div class="panel oculto" id="tab-setlist">
+                        <h2>🎵 Crear Listado Temporal</h2>
+
+                        <div class="fila-pick">
+                            <label class="campo">
+                                <span>Canción a agregar</span>
+
+                                <input
+                                    id="song-pick"
+                                    list="songs-datalist"
+                                    placeholder="Escribí para buscar…"
+                                    autocomplete="off">
+
+                                <datalist id="songs-datalist"></datalist>
+                            </label>
+
+                            <button class="btn" id="btn-agregar">➕ Agregar</button>
+                        </div>
+
+                        <p class="info" id="info-orden">
+                            El orden de esta lista será el orden del listado.
+                            Una misma canción puede repetirse.
+                        </p>
+
+                        <div id="builder"></div>
+
+                        <div class="fila-acciones">
+                            <button class="btn ancho" id="btn-publicar" disabled>
+                                💾 Publicar Listado
+                            </button>
+
+                            <button class="btn ancho" id="btn-limpiar">
+                                🗑️ Limpiar Listado
+                            </button>
+                        </div>
+
+                        <div id="bloque-listado-admin" class="oculto">
+                            <hr>
+
+                            <h2>📋 Listado Actual</h2>
+                            <div id="aviso-faltantes-admin"></div>
+                            <div id="tabla-listado-admin"></div>
+
+                            <p class="caption">
+                                El texto para compartir está en la vista
+                                <strong>Compartir</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toasts" class="toasts"></div>
+
+    <script src="app.js?v=3"></script>
+</body>
+</html>

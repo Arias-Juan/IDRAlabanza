@@ -1,6 +1,5 @@
-streamlit
-pandas
-google-cloud-bigquery
-google-auth
-pyarrow
-db-dtypes
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+pydantic==2.13.4
+pydantic-settings==2.14.2
+google-cloud-bigquery==3.42.3
