@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from google.api_core.exceptions import GoogleAPIError
 from google.auth.exceptions import GoogleAuthError
@@ -98,6 +98,31 @@ class NoCacheStaticFiles(StaticFiles):
         response.headers["Cache-Control"] = "no-cache"
 
         return response
+
+
+# Rutas del frontend (una por vista y por pestaña del admin): devuelven la
+# misma página y app.js muestra la sección según la URL, así al recargar se
+# vuelve al mismo lugar. Tienen que coincidir con las de app.js.
+RUTAS_FRONTEND = [
+    "/direccion",
+    "/equipo",
+    "/compartir",
+    "/admin",
+    "/admin/agregar",
+    "/admin/gestionar",
+    "/admin/listado"
+]
+
+
+def index_html():
+    return FileResponse(
+        FRONTEND_DIR / "index.html",
+        headers={"Cache-Control": "no-cache"}
+    )
+
+
+for ruta in RUTAS_FRONTEND:
+    app.get(ruta, include_in_schema=False)(index_html)
 
 
 # El frontend se sirve desde el mismo contenedor: mismo origen, sin CORS.

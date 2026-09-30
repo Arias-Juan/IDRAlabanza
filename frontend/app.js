@@ -487,6 +487,88 @@ function rolActual() {
     return $("rol").value;
 }
 
+// ------------------------------------------------------------- rutas
+// Cada vista (y cada pestaña del admin) tiene su ruta, así al recargar o
+// compartir el link se vuelve al mismo lugar. El backend sirve index.html
+// para todas estas rutas.
+
+const RUTA_DEFAULT = "/direccion";
+
+// Pestaña del admin (data-tab) <-> segmento de la URL.
+const TABS_ADMIN = { add: "agregar", manage: "gestionar", setlist: "listado" };
+
+function rutaDe(rol, tab) {
+    if (rol !== "admin") {
+        return `/${rol}`;
+    }
+
+    return `/admin/${TABS_ADMIN[tab] || TABS_ADMIN.add}`;
+}
+
+function leerRuta() {
+    const [rol, segmento] = location.pathname
+        .split("/")
+        .filter(Boolean);
+
+    const roles = [...$("rol").options].map((o) => o.value);
+
+    if (!roles.includes(rol)) {
+        return null;
+    }
+
+    const tab = Object.keys(TABS_ADMIN)
+        .find((k) => TABS_ADMIN[k] === segmento) || "add";
+
+    return { rol, tab };
+}
+
+function tabActual() {
+    return document.querySelector(".tab.activo").dataset.tab;
+}
+
+function mostrarTab(nombre) {
+    for (const tab of document.querySelectorAll(".tab")) {
+        tab.classList.toggle("activo", tab.dataset.tab === nombre);
+    }
+
+    for (const panel of document.querySelectorAll(".panel")) {
+        panel.classList.toggle("oculto", panel.id !== `tab-${nombre}`);
+    }
+}
+
+// Lleva la pantalla a lo que dice la URL. Una ruta desconocida (o "/")
+// se reemplaza por la default sin sumar una entrada al historial.
+function aplicarRuta() {
+    const ruta = leerRuta();
+
+    if (!ruta) {
+        history.replaceState(null, "", RUTA_DEFAULT);
+
+        return aplicarRuta();
+    }
+
+    $("rol").value = ruta.rol;
+
+    mostrarTab(ruta.tab);
+
+    // Normaliza /admin -> /admin/agregar.
+    const canonica = rutaDe(ruta.rol, ruta.tab);
+
+    if (location.pathname !== canonica) {
+        history.replaceState(null, "", canonica);
+    }
+
+    renderVistaActual();
+}
+
+function navegar() {
+    const destino = rutaDe(rolActual(), tabActual());
+
+    if (location.pathname !== destino) {
+        history.pushState(null, "", destino);
+    }
+}
+
 function renderVistaActual() {
     const rol = rolActual();
 
@@ -724,8 +806,12 @@ function initEventos() {
         // En móvil el panel tapa el contenido: al elegir un rol se cierra.
         $("sidebar").classList.remove("abierto");
 
+        navegar();
         renderVistaActual();
     });
+
+    // Atrás / adelante del navegador.
+    window.addEventListener("popstate", aplicarRuta);
 
     $("buscador").addEventListener("input", renderEquipo);
 
@@ -751,17 +837,8 @@ function initEventos() {
 
     for (const tab of document.querySelectorAll(".tab")) {
         tab.addEventListener("click", () => {
-            document
-                .querySelectorAll(".tab")
-                .forEach((t) => t.classList.remove("activo"));
-
-            tab.classList.add("activo");
-
-            for (const panel of document.querySelectorAll(".panel")) {
-                panel.classList.add("oculto");
-            }
-
-            $(`tab-${tab.dataset.tab}`).classList.remove("oculto");
+            mostrarTab(tab.dataset.tab);
+            navegar();
         });
     }
 
@@ -792,8 +869,9 @@ function initEventos() {
 async function init() {
     initEventos();
 
-    // Puntitos desde el primer frame, sin esperar a la primera respuesta.
-    renderVistaActual();
+    // Vista según la URL; puntitos desde el primer frame, sin esperar a la
+    // primera respuesta.
+    aplicarRuta();
 
     setTimeout(() => {
         if (!state.cargado) {

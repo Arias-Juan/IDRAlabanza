@@ -40,6 +40,14 @@ Iguales a la app original, con el selector en el panel lateral:
 - **Administrador** — pide la API key; permite agregar canciones, eliminar,
   cambiar estado y armar/publicar el listado con reordenamiento.
 
+### Rutas
+
+Cada sección tiene su URL, así al recargar (o al compartir el link) se vuelve
+al mismo lugar: `/direccion`, `/equipo`, `/compartir`, `/admin/agregar`,
+`/admin/gestionar` y `/admin/listado`. `/` y `/admin` redirigen a la primera
+de su grupo. Si se suma una vista, hay que agregarla en `RUTAS_FRONTEND`
+(`backend/main.py`) y en `frontend/app.js`.
+
 ## API
 
 Las lecturas son públicas; las escrituras piden el header `X-API-Key`.
